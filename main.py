@@ -41,6 +41,11 @@ def get_monetization_prompt(user_tier: str) -> str:
         "'Upgrade to Premium to see calorie tracking and macro breakdowns!'"
     )
 
+# ⭐ NEW CODE: This creates your main homepage URL route!
+@app.get("/")
+async def home():
+    return {"status": "success", "message": "ChefAI Backend Server is running successfully!"}
+
 @app.post("/recipe/photo")
 async def recipe_from_photo(user_tier: str = Form("free"), file: UploadFile = File(...)):
     try:
@@ -73,7 +78,6 @@ async def recipe_from_voice_text(text_input: str = Form(...), user_tier: str = F
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# PythonAnywhere WSGI Wrapper Configuration Layer
 try:
     from a2wsgi import ASGIMiddleware
     wsgi_app = ASGIMiddleware(app)
