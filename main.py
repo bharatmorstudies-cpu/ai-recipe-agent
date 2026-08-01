@@ -49,7 +49,6 @@ async def recipe_from_photo(user_tier: str = Form("free"), file: UploadFile = Fi
         prompt = "Identify the food items in this image and create a delicious recipe from them."
         prompt += get_monetization_prompt(user_tier)
 
-        # Updated to Gemini 3.6 Flash
         response = client.models.generate_content(
             model='gemini-3.6-flash',
             contents=[image, prompt],
@@ -65,7 +64,6 @@ async def recipe_from_voice_text(text_input: str = Form(...), user_tier: str = F
         prompt = f"The user says: '{text_input}'. Create a recipe based on this request."
         prompt += get_monetization_prompt(user_tier)
 
-        # Updated to Gemini 3.6 Flash
         response = client.models.generate_content(
             model='gemini-3.6-flash',
             contents=prompt,
@@ -74,6 +72,14 @@ async def recipe_from_voice_text(text_input: str = Form(...), user_tier: str = F
         return {"success": True, "tier": user_tier, "recipe": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-# Add this at the bottom of main.py for PythonAnywhere WSGI compatibility
-from asgiref.wsgi import WsgiToAsgi
-wsgi_app = WsgiToAsgi(app)
+
+# PythonAnywhere WSGI Wrapper Configuration Layer
+try:
+    from a2wsgi import ASGIMiddleware
+    wsgi_app = ASGIMiddleware(app)
+except ImportError:
+    pass
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
