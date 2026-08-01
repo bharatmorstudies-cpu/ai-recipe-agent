@@ -1,4 +1,4 @@
-import os
+﻿import os
 import io
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,19 +8,15 @@ from google.genai import types
 from PIL import Image
 from dotenv import load_dotenv
 
-# Load API Key from .env file
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not API_KEY:
     raise ValueError("CRITICAL: GEMINI_API_KEY is missing from environment variables.")
 
-# Initialize standard Google GenAI Client
 client = genai.Client(api_key=API_KEY)
-
 app = FastAPI(title="ChefAI Agent Backend")
 
-# Allow mobile apps to connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,7 +31,6 @@ SYSTEM_INSTRUCTION = (
 )
 
 def get_monetization_prompt(user_tier: str) -> str:
-    """Modifies the AI output based on whether the user has paid or not."""
     if user_tier.lower() == "premium":
         return (
             "\n\n[PREMIUM BENEFIT]: Provide an exact breakdown of total calories, "
@@ -47,55 +42,38 @@ def get_monetization_prompt(user_tier: str) -> str:
     )
 
 @app.post("/recipe/photo")
-async def recipe_from_photo(
-    user_tier: str = Form("free"), 
-    file: UploadFile = File(...)
-):
-    """Accepts an image file from a mobile phone and generates a recipe."""
+async def recipe_from_photo(user_tier: str = Form("free"), file: UploadFile = File(...)):
     try:
-        # Read uploaded image bytes
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes))
-        
-        # Build monetization logic into prompt
         prompt = "Identify the food items in this image and create a delicious recipe from them."
         prompt += get_monetization_prompt(user_tier)
 
-        # Call Gemini 2.5 Flash
+        # Updated to Gemini 3.6 Flash
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=[image, prompt],
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION
-            )
+            config=types.GenerateContentConfig(system_instruction=SYSTEM_INSTRUCTION)
         )
         return {"success": True, "tier": user_tier, "recipe": response.text}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/recipe/voice-text")
-async def recipe_from_voice_text(
-    text_input: str = Form(...), 
-    user_tier: str = Form("free")
-):
-    """Accepts a text string (transcribed from mobile voice) and generates a recipe."""
+async def recipe_from_voice_text(text_input: str = Form(...), user_tier: str = Form("free")):
     try:
         prompt = f"The user says: '{text_input}'. Create a recipe based on this request."
         prompt += get_monetization_prompt(user_tier)
 
+        # Updated to Gemini 3.6 Flash
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION
-            )
+            config=types.GenerateContentConfig(system_instruction=SYSTEM_INSTRUCTION)
         )
         return {"success": True, "tier": user_tier, "recipe": response.text}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+# Add this at the bottom of main.py for PythonAnywhere WSGI compatibility
+from asgiref.wsgi import WsgiToAsgi
+wsgi_app = WsgiToAsgi(app)
